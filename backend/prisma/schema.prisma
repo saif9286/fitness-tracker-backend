@@ -1,0 +1,150 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  password_hash String
+  created_at    DateTime  @default(now())
+  reset_token         String?   @unique
+  reset_token_expires DateTime?
+
+  profile       UserProfile?
+  food_logs     FoodLog[]
+  weight_logs   WeightLog[]
+  water_logs    WaterLog[]
+  workouts      Workout[]
+  streaks       Streak[]
+  photos        ProgressPhoto[]
+  achievements  UserAchievement[]
+}
+
+model UserProfile {
+  id              Int      @id @default(autoincrement())
+  user_id         Int      @unique
+  age             Int
+  gender          String
+  height          Float
+  weight          Float
+  goal            String
+  diet_type       String
+  activity_level  String
+  protein_goal    Float?
+  calorie_goal    Float?
+  water_goal      Float    @default(3.0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Food {
+  id         Int       @id @default(autoincrement())
+  food_name  String
+  protein    Float
+  calories   Float
+  carbs      Float
+  fat        Float
+  fiber      Float     @default(0)
+  diet_type  String
+  meal_type  String
+  serving    String    @default("100g")
+
+  food_logs  FoodLog[]
+}
+
+model FoodLog {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  food_id   Int
+  quantity  Float
+  meal_type String
+  date      DateTime @default(now())
+
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  food      Food     @relation(fields: [food_id], references: [id])
+}
+
+model WeightLog {
+  id      Int      @id @default(autoincrement())
+  user_id Int
+  weight  Float
+  date    DateTime @default(now())
+
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model WaterLog {
+  id      Int      @id @default(autoincrement())
+  user_id Int
+  amount  Float
+  date    DateTime @default(now())
+
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Workout {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  exercise  String
+  sets      Int
+  reps      Int
+  weight    Float?
+  duration  Int?
+  date      DateTime @default(now())
+
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Streak {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  type        String
+  count       Int      @default(0)
+  best        Int      @default(0)
+  last_date   DateTime
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, type])
+}
+
+model ProgressPhoto {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  image_url String
+  angle     String
+  date      DateTime @default(now())
+  notes     String?
+
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String
+  icon        String
+  condition   String
+
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  achievement_id Int
+  unlocked_at    DateTime @default(now())
+
+  user           User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  achievement    Achievement @relation(fields: [achievement_id], references: [id])
+
+  @@unique([user_id, achievement_id])
+}

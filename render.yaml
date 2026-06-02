@@ -1,0 +1,41 @@
+services:
+  # Backend Web Service (Node.js + Express + Prisma + SQLite Volume)
+  - type: web
+    name: fitness-tracker-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm run deploy:start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/var/data/dev.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://fitness-tracker-frontend.onrender.com # Change this if your frontend gets a different URL on Render!
+      - key: NUTRITION_API_KEY
+        sync: false # Set this in your Render dashboard after deploy
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false # Set this in your Render dashboard if uploading progress photos
+      - key: CLOUDINARY_API_KEY
+        sync: false # Set this in your Render dashboard
+      - key: CLOUDINARY_API_SECRET
+        sync: false # Set this in your Render dashboard
+    disk:
+      name: sqlite-db-volume
+      mountPath: /var/data
+      sizeGB: 1
+
+  # Frontend Static Site (Vite React App)
+  - type: web
+    name: fitness-tracker-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://fitness-tracker-backend.onrender.com/api # Change this if your backend gets a different URL on Render!
