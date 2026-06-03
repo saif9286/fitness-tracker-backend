@@ -9,10 +9,11 @@ if (!connectionString) {
   throw new Error('DATABASE_URL environment variable is required to instantiate PrismaClient.');
 }
 
-// Configure connection pool with SSL enabled in production (standard for cloud PG databases)
+// Enforce SSL for all remote databases (like Neon/Supabase), disable only for localhost
+const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
 const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: isLocalhost ? undefined : { rejectUnauthorized: false },
 });
 const adapter = new PrismaPg(pool);
 
