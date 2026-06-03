@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const { Pool, neonConfig } = require('@neondatabase/serverless');
+const { neonConfig } = require('@neondatabase/serverless');
 const { PrismaNeon } = require('@prisma/adapter-neon');
 const { PrismaClient } = require('@prisma/client');
 const ws = require('ws');
@@ -15,19 +15,9 @@ if (!connectionString) {
   process.exit(1);
 }
 
-// Parse DATABASE_URL into individual parameters so the Neon Pool
-// correctly propagates them to each Client it creates internally
-const dbUrl = new URL(connectionString);
-const pool = new Pool({
-  host: dbUrl.hostname,
-  port: parseInt(dbUrl.port) || 5432,
-  user: decodeURIComponent(dbUrl.username),
-  password: decodeURIComponent(dbUrl.password),
-  database: dbUrl.pathname.slice(1),
-  ssl: true,
-});
-
-const adapter = new PrismaNeon(pool);
+// PrismaNeon is a factory that accepts a Pool config object (NOT a Pool instance).
+// It creates its own Pool internally via new neon.Pool(config).
+const adapter = new PrismaNeon({ connectionString });
 
 const prisma = new PrismaClient({
   adapter,
