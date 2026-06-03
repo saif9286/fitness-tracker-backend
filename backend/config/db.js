@@ -9,7 +9,11 @@ if (!connectionString) {
   throw new Error('DATABASE_URL environment variable is required to instantiate PrismaClient.');
 }
 
-const pool = new Pool({ connectionString });
+// Configure connection pool with SSL enabled in production (standard for cloud PG databases)
+const pool = new Pool({
+  connectionString,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+});
 const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({
