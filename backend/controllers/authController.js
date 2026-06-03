@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
 const { generateAccessToken, generateRefreshToken, setTokenCookies } = require('../utils/generateToken');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/sendEmail');
+const crypto = require('crypto');
 
 // @desc    Register new user
 // @route   POST /api/auth/signup
@@ -22,25 +24,37 @@ const signup = async (req, res, next) => {
     const salt = await bcrypt.genSalt(12);
     const password_hash = await bcrypt.hash(password, salt);
 
-    // Create user
+    // Generate verification token
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const hashedVerifyToken = crypto.createHash('sha256').update(verifyToken).digest('hex');
+    const verifyTokenExpires = new Date(Date.now() + 24 * 3600000); // 24 hours
+
+    // Create user (is_verified defaults to false)
     const user = await prisma.user.create({
-      data: { name, email, password_hash },
+      data: { 
+        name, 
+        email, 
+        password_hash,
+        verify_token: hashedVerifyToken,
+        verify_token_expires: verifyTokenExpires
+      },
       select: { id: true, name: true, email: true, created_at: true },
     });
 
-    // Generate tokens
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
-    setTokenCookies(res, accessToken, refreshToken);
+    // Create verification URL
+    const clientUrl = process.env.CLIENT_URL || `http://localhost:5173`;
+    const verifyUrl = `${clientUrl}/verify-email?token=${verifyToken}`;
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(user.email, verifyUrl);
+    } catch (err) {
+      console.error('Error sending email, continuing anyway in dev mode...', err);
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Account created successfully',
-      data: {
-        user,
-        accessToken,
-        refreshToken,
-      },
+      message: 'Account created. Please check your email to verify your account.',
     });
   } catch (error) {
     next(error);
@@ -68,6 +82,13 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
+      });
+    }
+
+    if (!user.is_verified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Please verify your email address to log in.',
       });
     }
 
@@ -180,7 +201,6 @@ const getMe = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const crypto = require('crypto');
 
     const user = await prisma.user.findUnique({ where: { email } });
     
@@ -208,14 +228,14 @@ const forgotPassword = async (req, res, next) => {
     });
 
     // Create reset URL
-    const resetUrl = `${req.protocol}://${req.get('host').replace('5000', '5173')}/reset-password?token=${resetToken}`;
+    const clientUrl = process.env.CLIENT_URL || `http://localhost:5173`;
+    const resetUrl = `${clientUrl}/reset-password?token=${resetToken}`;
 
-    // Log the reset URL to console for local testing
-    console.log('\n=========================================================');
-    console.log('🔑 PASSWORD RESET LINK (Development Mode)');
-    console.log(`Email: ${user.email}`);
-    console.log(`Link:  ${resetUrl}`);
-    console.log('=========================================================\n');
+    try {
+      await sendPasswordResetEmail(user.email, resetUrl);
+    } catch (err) {
+      console.error('Error sending reset email...', err);
+    }
 
     res.json({
       success: true,
@@ -276,4 +296,63 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword };
+// @desc    Verify Email
+// @route   POST /api/auth/verify-email
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await prisma.user.findFirst({
+      where: {
+        verify_token: hashedToken,
+        verify_token_expires: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification token.',
+      });
+    }
+
+    // Mark as verified
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        is_verified: true,
+        verify_token: null,
+        verify_token_expires: null,
+      },
+    });
+
+    // Generate tokens for automatic login
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+    setTokenCookies(res, accessToken, refreshToken);
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          created_at: user.created_at,
+        },
+        hasProfile: false,
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail };

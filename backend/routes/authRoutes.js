@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { protect } = require('../middleware/auth');
-const { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword } = require('../controllers/authController');
+const { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -44,6 +44,14 @@ router.post(
       .withMessage('Password must be at least 6 characters'),
   ]),
   resetPassword
+);
+
+router.post(
+  '/verify-email',
+  validate([
+    body('token').notEmpty().withMessage('Token is required'),
+  ]),
+  verifyEmail
 );
 
 router.post('/logout', logout);
