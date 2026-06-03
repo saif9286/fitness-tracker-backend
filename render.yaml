@@ -16,15 +16,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: CLIENT_URL
-        value: https://fitness-tracker-frontend.onrender.com 
-      - key: NUTRITION_API_KEY
-        sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
-        sync: false
+        value: https://fitness-tracker-frontend.onrender.com
   - type: web
     name: fitness-tracker-frontend
     env: static
