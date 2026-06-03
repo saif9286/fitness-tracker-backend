@@ -43,10 +43,15 @@ export function AuthProvider({ children }) {
 
   const signup = async (name, email, password) => {
     const { data } = await api.post('/auth/signup', { name, email, password });
+    return data;
+  };
+
+  const verifyEmail = async (token) => {
+    const { data } = await api.post('/auth/verify-email', { token });
     localStorage.setItem('accessToken', data.data.accessToken);
     localStorage.setItem('refreshToken', data.data.refreshToken);
     setUser(data.data.user);
-    setHasProfile(false);
+    setHasProfile(data.data.hasProfile);
     return data.data;
   };
 
@@ -74,6 +79,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user,
       login,
       signup,
+      verifyEmail,
       logout,
       refreshUser,
       setHasProfile,

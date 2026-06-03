@@ -28,8 +28,8 @@ export default function Signup() {
     setLoading(true);
     try {
       await signup(name, email, password);
-      toast.success('Account created! Let\'s set up your profile.');
-      navigate('/onboarding');
+      toast.success('Account created! Please check your email to verify your account.');
+      navigate('/login');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Signup failed');
     } finally {
