@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate');
 const { protect } = require('../middleware/auth');
-const { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail } = require('../controllers/authController');
+const { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail, googleAuth } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -54,8 +54,10 @@ router.post(
   verifyEmail
 );
 
+router.post('/google', googleAuth);
 router.post('/logout', logout);
 router.post('/refresh', refreshToken);
 router.get('/me', protect, getMe);
 
 module.exports = router;
+

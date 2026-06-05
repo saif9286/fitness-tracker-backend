@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import api from '../../services/api';
-import { Mail, ArrowLeft, Send } from 'lucide-react';
+import { Mail, ArrowLeft, Send, Copy, CheckCircle } from 'lucide-react';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [resetUrl, setResetUrl] = useState(null);
+  const [copied, setCopied] = useState(false);
   const toast = useToast();
 
   const handleSubmit = async (e) => {
@@ -16,13 +18,31 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email });
+      const { data } = await api.post('/auth/forgot-password', { email });
       setSubmitted(true);
-      toast.success('Instructions sent! Check your email or backend console.');
+      
+      // If the server returned a resetUrl (email not configured), show it directly
+      if (data.resetUrl) {
+        setResetUrl(data.resetUrl);
+        toast.info('Email service not configured — use the link below to reset your password.');
+      } else {
+        toast.success('Instructions sent! Check your email.');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copyResetUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(resetUrl);
+      setCopied(true);
+      toast.success('Reset link copied!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy');
     }
   };
 
@@ -102,8 +122,8 @@ export default function ForgotPassword() {
                 width: '64px', 
                 height: '64px', 
                 borderRadius: '50%', 
-                backgroundColor: 'rgba(var(--primary-rgb), 0.1)', 
-                color: 'var(--primary-color)', 
+                backgroundColor: 'var(--accent-cool-bg)', 
+                color: 'var(--accent-cool)', 
                 display: 'inline-flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
@@ -111,21 +131,43 @@ export default function ForgotPassword() {
               }}>
                 <Send size={32} />
               </div>
-              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '12px' }}>Check Your Email</h3>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: 'var(--space-4)' }}>
-                If an account exists for <strong>{email}</strong>, we have sent instructions to reset your password. 
-                <br /><br />
-                <span style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>
-                  (During local development, you can find the link directly in your backend terminal console!)
-                </span>
-              </p>
-              <button 
-                onClick={() => setSubmitted(false)} 
-                className="btn btn-secondary w-full"
-                style={{ padding: '12px' }}
-              >
-                Resend link
-              </button>
+
+              {resetUrl ? (
+                <>
+                  <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '12px' }}>Reset Link Ready</h3>
+                  <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: 'var(--space-4)' }}>
+                    Email service is not configured. Click below to open your reset link, or copy it:
+                  </p>
+                  <a 
+                    href={resetUrl} 
+                    className="btn btn-primary w-full" 
+                    style={{ marginBottom: 'var(--space-3)', padding: '12px', textDecoration: 'none' }}
+                  >
+                    Open Reset Link <ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} />
+                  </a>
+                  <button
+                    onClick={copyResetUrl}
+                    className="btn btn-secondary w-full"
+                    style={{ padding: '12px' }}
+                  >
+                    {copied ? <><CheckCircle size={16} /> Copied!</> : <><Copy size={16} /> Copy Link</>}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '12px' }}>Check Your Email</h3>
+                  <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: 'var(--space-4)' }}>
+                    If an account exists for <strong>{email}</strong>, we have sent instructions to reset your password.
+                  </p>
+                  <button 
+                    onClick={() => setSubmitted(false)} 
+                    className="btn btn-secondary w-full"
+                    style={{ padding: '12px' }}
+                  >
+                    Resend link
+                  </button>
+                </>
+              )}
             </div>
           )}
 

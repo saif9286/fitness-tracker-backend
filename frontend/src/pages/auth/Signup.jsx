@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Eye, EyeOff, ArrowRight, Check } from 'lucide-react';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -10,7 +12,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signup } = useAuth();
+  const { signup, googleLogin } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -27,15 +29,53 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      await signup(name, email, password);
-      toast.success('Account created! Please check your email to verify your account.');
-      navigate('/login');
+      const result = await signup(name, email, password);
+      if (result.autoLoggedIn) {
+        toast.success('Account created successfully! Welcome aboard!');
+        navigate('/onboarding');
+      } else {
+        toast.success('Account created! Please check your email to verify your account.');
+        navigate('/login');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Signup failed');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleGoogleResponse = useCallback(async (response) => {
+    setLoading(true);
+    try {
+      const result = await googleLogin(response.credential);
+      toast.success(`Welcome, ${result.user.name}!`);
+      navigate(result.hasProfile ? '/' : '/onboarding');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google sign-up failed');
+    } finally {
+      setLoading(false);
+    }
+  }, [googleLogin, toast, navigate]);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleResponse,
+    });
+
+    const btnContainer = document.getElementById('google-signup-btn');
+    if (btnContainer) {
+      window.google.accounts.id.renderButton(btnContainer, {
+        theme: 'outline',
+        size: 'large',
+        width: '100%',
+        text: 'signup_with',
+        shape: 'rectangular',
+      });
+    }
+  }, [handleGoogleResponse]);
 
   return (
     <div className="auth-layout">
@@ -62,6 +102,16 @@ export default function Signup() {
 
           <h1 className="auth-title">Create account</h1>
           <p className="auth-subtitle">Start tracking in under 2 minutes</p>
+
+          {/* Google Sign-Up Button */}
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <div id="google-signup-btn" style={{ marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'center' }} />
+              <div className="auth-divider">
+                <span>or sign up with email</span>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">

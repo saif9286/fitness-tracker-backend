@@ -43,7 +43,25 @@ export function AuthProvider({ children }) {
 
   const signup = async (name, email, password) => {
     const { data } = await api.post('/auth/signup', { name, email, password });
-    return data;
+    // If server returned tokens (auto-verified), log the user in
+    if (data.data?.accessToken) {
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      setUser(data.data.user);
+      setHasProfile(data.data.hasProfile);
+      return { ...data, autoLoggedIn: true };
+    }
+    // Otherwise user needs to verify email
+    return { ...data, autoLoggedIn: false };
+  };
+
+  const googleLogin = async (credential) => {
+    const { data } = await api.post('/auth/google', { credential });
+    localStorage.setItem('accessToken', data.data.accessToken);
+    localStorage.setItem('refreshToken', data.data.refreshToken);
+    setUser(data.data.user);
+    setHasProfile(data.data.hasProfile);
+    return data.data;
   };
 
   const verifyEmail = async (token) => {
@@ -79,6 +97,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user,
       login,
       signup,
+      googleLogin,
       verifyEmail,
       logout,
       refreshUser,

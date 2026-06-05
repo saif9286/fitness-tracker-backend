@@ -45,16 +45,54 @@ const signup = async (req, res, next) => {
     const clientUrl = process.env.CLIENT_URL || `http://localhost:5173`;
     const verifyUrl = `${clientUrl}/verify-email?token=${verifyToken}`;
 
-    // Send verification email
+    // Try to send verification email
+    let emailSent = false;
     try {
-      await sendVerificationEmail(user.email, verifyUrl);
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        await sendVerificationEmail(user.email, verifyUrl);
+        emailSent = true;
+      } else {
+        console.log('⚠️  No email credentials configured. Skipping verification email.');
+        console.log(`📧 Verification URL: ${verifyUrl}`);
+      }
     } catch (err) {
-      console.error('Error sending email, continuing anyway in dev mode...', err);
+      console.error('Error sending verification email:', err.message);
+      console.log(`📧 Verification URL (fallback): ${verifyUrl}`);
     }
 
+    // If email was NOT sent, auto-verify the user so they can login immediately
+    if (!emailSent) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          is_verified: true,
+          verify_token: null,
+          verify_token_expires: null,
+        },
+      });
+
+      // Auto-login: generate tokens and return them
+      const accessToken = generateAccessToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+      setTokenCookies(res, accessToken, refreshToken);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Account created successfully!',
+        data: {
+          user,
+          hasProfile: false,
+          accessToken,
+          refreshToken,
+        },
+      });
+    }
+
+    // Email was sent — user needs to verify
     res.status(201).json({
       success: true,
       message: 'Account created. Please check your email to verify your account.',
+      requiresVerification: true,
     });
   } catch (error) {
     next(error);
@@ -73,6 +111,14 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password',
+      });
+    }
+
+    // Check if this is a Google-only account (no password set)
+    if (!user.password_hash) {
+      return res.status(401).json({
+        success: false,
+        message: 'This account uses Google Sign-In. Please use the Google button to log in.',
       });
     }
 
@@ -231,10 +277,27 @@ const forgotPassword = async (req, res, next) => {
     const clientUrl = process.env.CLIENT_URL || `http://localhost:5173`;
     const resetUrl = `${clientUrl}/reset-password?token=${resetToken}`;
 
+    let emailSent = false;
     try {
-      await sendPasswordResetEmail(user.email, resetUrl);
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        await sendPasswordResetEmail(user.email, resetUrl);
+        emailSent = true;
+      } else {
+        console.log('⚠️  No email credentials configured. Skipping password reset email.');
+        console.log(`🔑 Password Reset URL: ${resetUrl}`);
+      }
     } catch (err) {
-      console.error('Error sending reset email...', err);
+      console.error('Error sending reset email:', err.message);
+      console.log(`🔑 Password Reset URL (fallback): ${resetUrl}`);
+    }
+
+    // If email couldn't be sent, return the reset URL directly so the user isn't stuck
+    if (!emailSent) {
+      return res.json({
+        success: true,
+        message: 'Email service is not configured. Use the reset link below.',
+        resetUrl,
+      });
     }
 
     res.json({
@@ -251,7 +314,6 @@ const forgotPassword = async (req, res, next) => {
 const resetPassword = async (req, res, next) => {
   try {
     const { token, password } = req.body;
-    const crypto = require('crypto');
 
     // Hash the token received from url
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -332,8 +394,8 @@ const verifyEmail = async (req, res, next) => {
 
     // Generate tokens for automatic login
     const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
-    setTokenCookies(res, accessToken, refreshToken);
+    const refreshTokenVal = generateRefreshToken(user.id);
+    setTokenCookies(res, accessToken, refreshTokenVal);
 
     res.json({
       success: true,
@@ -347,7 +409,7 @@ const verifyEmail = async (req, res, next) => {
         },
         hasProfile: false,
         accessToken,
-        refreshToken,
+        refreshToken: refreshTokenVal,
       },
     });
   } catch (error) {
@@ -355,4 +417,107 @@ const verifyEmail = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail };
+// @desc    Google OAuth login/signup
+// @route   POST /api/auth/google
+const googleAuth = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential token is required',
+      });
+    }
+
+    // Verify the Google ID token
+    const { OAuth2Client } = require('google-auth-library');
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid Google token',
+      });
+    }
+
+    const { sub: googleId, email, name, email_verified } = payload;
+
+    if (!email_verified) {
+      return res.status(401).json({
+        success: false,
+        message: 'Google email not verified',
+      });
+    }
+
+    // Check if user already exists (by google_id or email)
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { google_id: googleId },
+          { email: email },
+        ],
+      },
+    });
+
+    if (user) {
+      // Link Google ID if not already linked
+      if (!user.google_id) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            google_id: googleId,
+            is_verified: true,
+          },
+        });
+      }
+    } else {
+      // Create new user
+      user = await prisma.user.create({
+        data: {
+          name: name || 'Google User',
+          email,
+          google_id: googleId,
+          is_verified: true,
+        },
+      });
+    }
+
+    // Check if user has profile
+    const profile = await prisma.userProfile.findUnique({
+      where: { user_id: user.id },
+    });
+
+    // Generate tokens
+    const accessToken = generateAccessToken(user.id);
+    const refreshTokenVal = generateRefreshToken(user.id);
+    setTokenCookies(res, accessToken, refreshTokenVal);
+
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          created_at: user.created_at,
+        },
+        hasProfile: !!profile,
+        accessToken,
+        refreshToken: refreshTokenVal,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail, googleAuth };

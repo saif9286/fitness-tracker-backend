@@ -4,13 +4,15 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
   id                  Int       @id @default(autoincrement())
   name                String
   email               String    @unique
-  password_hash       String
+  password_hash       String?
+  google_id           String?   @unique
   is_verified         Boolean   @default(false)
   verify_token        String?   @unique
   verify_token_expires DateTime?
