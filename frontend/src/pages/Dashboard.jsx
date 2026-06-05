@@ -57,8 +57,8 @@ export default function Dashboard() {
         console.error('Failed to auto-update streaks', streakErr);
       }
       const [dashRes, trendRes] = await Promise.all([
-        api.get('/analytics/dashboard'),
-        api.get('/analytics/trends/protein?days=7'),
+        api.get('/metrics/dashboard'),
+        api.get('/metrics/trends/protein?days=7'),
       ]);
       if (dashRes.data.success) {
         setData(dashRes.data.data);
@@ -125,6 +125,15 @@ export default function Dashboard() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
         <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '60vh', gap: 'var(--space-4)', textAlign: 'center' }}>
+        <p className="text-secondary">Failed to load dashboard data. <br/>If you are using an adblocker (like Brave Shields), it might be blocking the data.</p>
+        <Button variant="secondary" onClick={fetchDashboard}>Retry</Button>
       </div>
     );
   }

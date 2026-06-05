@@ -53,7 +53,7 @@ app.use('/api/weight', weightRoutes);
 app.use('/api/water', waterRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/streaks', streakRoutes);
-app.use('/api/analytics', analyticsRoutes);
+app.use('/api/metrics', analyticsRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/export', exportRoutes);
 
