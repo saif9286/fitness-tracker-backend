@@ -4,15 +4,23 @@ const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    const stored = localStorage.getItem('fueltrack-theme');
-    if (stored) return stored;
+    try {
+      const stored = localStorage.getItem('fueltrack-theme');
+      if (stored) return stored;
+    } catch (e) {
+      console.warn('localStorage access denied');
+    }
     // Default to dark (Peloton style)
     return 'dark';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('fueltrack-theme', theme);
+    try {
+      localStorage.setItem('fueltrack-theme', theme);
+    } catch (e) {
+      // Ignore
+    }
   }, [theme]);
 
   const toggleTheme = () => {

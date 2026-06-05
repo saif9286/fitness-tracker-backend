@@ -20,11 +20,11 @@ import VerifyEmail from './pages/auth/VerifyEmail';
 // Protected Pages
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
-import FoodTracker from './pages/FoodTracker';
+import FoodLog from './pages/FoodLog';
 import Recommendations from './pages/Recommendations';
 import MealPlan from './pages/MealPlan';
-import WeightTracker from './pages/WeightTracker';
-import WorkoutTracker from './pages/WorkoutTracker';
+import WeightLog from './pages/WeightLog';
+import Workouts from './pages/Workouts';
 import ProgressPhotos from './pages/ProgressPhotos';
 import Profile from './pages/Profile';
 
@@ -62,11 +62,11 @@ export default function App() {
                 }
               >
                 <Route index element={<Dashboard />} />
-                <Route path="tracker" element={<FoodTracker />} />
+                <Route path="tracker" element={<FoodLog />} />
                 <Route path="recommendations" element={<Recommendations />} />
                 <Route path="meal-plan" element={<MealPlan />} />
-                <Route path="weight" element={<WeightTracker />} />
-                <Route path="workouts" element={<WorkoutTracker />} />
+                <Route path="weight" element={<WeightLog />} />
+                <Route path="workouts" element={<Workouts />} />
                 <Route path="progress" element={<ProgressPhotos />} />
                 <Route path="profile" element={<Profile />} />
               </Route>
