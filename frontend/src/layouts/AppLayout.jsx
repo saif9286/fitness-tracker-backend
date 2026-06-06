@@ -117,8 +117,11 @@ export default function AppLayout() {
           <div className="topbar-logo">
             <h2>Fuel<span>Track</span></h2>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="btn btn-ghost btn-icon" onClick={toggleTheme}>
+          <div className="flex items-center gap-2">
+            <button className="btn btn-ghost btn-icon" onClick={() => navigate('/progress')} title="Progress Photos">
+              <Camera size={18} />
+            </button>
+            <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle Theme">
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
