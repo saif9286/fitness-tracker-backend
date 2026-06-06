@@ -1905,24 +1905,138 @@ img {
 }
 
 /* =========================================
-   RECOMMENDATIONS CARD INTERACTION
+   RECOMMENDATIONS RESPONSIBILITY & OVERHAUL
    ========================================= */
 
-.recommendation-card {
-  transition: transform 0.25s var(--transition-spring), border-color 0.2s, box-shadow 0.2s;
+.recommendations-bento-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-4);
 }
 
-.recommendation-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  border-color: var(--accent-cool) !important;
-  box-shadow: 0 8px 30px rgba(0, 212, 170, 0.12) !important;
-}
-
-@media (max-width: 768px) {
-  .recommendation-card:active {
-    transform: scale(0.97) !important;
-    border-color: var(--accent-cool) !important;
-    background-color: var(--bg-hover) !important;
+@media (max-width: 1024px) {
+  .recommendations-bento-grid {
+    grid-template-columns: 1fr;
   }
 }
 
+.recommendation-row-wrapper {
+  position: relative;
+}
+
+.recommendation-row {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+  scrollbar-width: thin;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.recommendation-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.recommendation-row::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.recommendation-row::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-full);
+}
+
+.recommendation-card {
+  width: 280px;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  transition: transform 0.25s var(--transition-spring), border-color 0.2s, box-shadow 0.2s !important;
+  cursor: pointer;
+}
+
+.recommendation-card:hover {
+  border-color: var(--accent-cool) !important;
+  box-shadow: 0 4px 12px rgba(0, 212, 170, 0.12) !important;
+}
+
+.recommendation-card:active {
+  transform: scale(0.96) !important;
+  border-color: var(--accent-cool) !important;
+  background-color: var(--bg-hover) !important;
+}
+
+.diet-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+.diet-badge[data-diet="vegan"] {
+  color: var(--accent-cool) !important;
+}
+
+.diet-badge[data-diet="vegetarian"] {
+  color: var(--accent-cool) !important;
+}
+
+.diet-badge[data-diet="non-vegetarian"] {
+  color: var(--accent-warm) !important;
+}
+
+.diet-badge[data-diet="eggetarian"] {
+  color: var(--accent-blue) !important;
+}
+
+.recommendation-food-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 44px;
+  line-height: 22px;
+  color: var(--text-primary);
+}
+
+.protein-value {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--accent-cool);
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.protein-unit {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+.scroll-fade-cue {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(90deg, transparent, var(--bg-primary));
+  pointer-events: none;
+  opacity: 0.8;
+  border-radius: var(--radius-lg);
+}
+
+@media (max-width: 768px) {
+  .scroll-fade-cue {
+    display: none; /* Disable layout cue on small mobile to allow maximum screen space */
+  }
+}

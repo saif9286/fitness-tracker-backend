@@ -64,6 +64,15 @@ export function AuthProvider({ children }) {
     return data.data;
   };
 
+  const googleLoginDirect = async (accessToken, refreshToken, hasProfile) => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    const { data } = await api.get('/auth/me');
+    setUser(data.data);
+    setHasProfile(hasProfile);
+    return data.data;
+  };
+
   const verifyEmail = async (token) => {
     const { data } = await api.post('/auth/verify-email', { token });
     localStorage.setItem('accessToken', data.data.accessToken);
@@ -98,6 +107,7 @@ export function AuthProvider({ children }) {
       login,
       signup,
       googleLogin,
+      googleLoginDirect,
       verifyEmail,
       logout,
       refreshUser,
@@ -105,6 +115,7 @@ export function AuthProvider({ children }) {
     }}>
       {children}
     </AuthContext.Provider>
+
   );
 }
 

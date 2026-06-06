@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -14,6 +14,15 @@ export default function Login() {
   const { login, googleLogin } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Show error if redirected from OAuth callback with error
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      toast.error(decodeURIComponent(oauthError));
+    }
+  }, [searchParams, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,9 +56,14 @@ export default function Login() {
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
 
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth <= 768;
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleResponse,
+      callback: isMobile ? undefined : handleGoogleResponse,
+      ux_mode: isMobile ? 'redirect' : 'popup',
+      login_uri: isMobile ? `${apiBaseUrl}/auth/google/callback` : undefined,
       itp_support: true,
     });
 
@@ -64,6 +78,7 @@ export default function Login() {
       });
     }
   }, [handleGoogleResponse]);
+
 
   return (
     <div className="auth-layout">

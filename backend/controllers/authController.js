@@ -521,4 +521,88 @@ const googleAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail, googleAuth };
+// @desc    Google OAuth redirect callback handling (for mobile)
+// @route   POST /api/auth/google/callback
+const googleCallback = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
+    if (!credential) {
+      return res.redirect(`${clientUrl}/login?error=${encodeURIComponent('Google credential is required')}`);
+    }
+
+    // Verify the Google ID token
+    const { OAuth2Client } = require('google-auth-library');
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (err) {
+      console.error('Google token verification failed:', err.message);
+      return res.redirect(`${clientUrl}/login?error=${encodeURIComponent('Invalid Google token: ' + err.message)}`);
+    }
+
+    const { sub: googleId, email, name, email_verified } = payload;
+
+    if (!email_verified) {
+      return res.redirect(`${clientUrl}/login?error=${encodeURIComponent('Google email not verified')}`);
+    }
+
+    // Check if user already exists (by google_id or email)
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { google_id: googleId },
+          { email: email },
+        ],
+      },
+    });
+
+    if (user) {
+      // Link Google ID if not already linked
+      if (!user.google_id) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            google_id: googleId,
+            is_verified: true,
+          },
+        });
+      }
+    } else {
+      // Create new user
+      user = await prisma.user.create({
+        data: {
+          name: name || 'Google User',
+          email,
+          google_id: googleId,
+          is_verified: true,
+        },
+      });
+    }
+
+    // Check if user has profile
+    const profile = await prisma.userProfile.findUnique({
+      where: { user_id: user.id },
+    });
+
+    // Generate tokens
+    const accessToken = generateAccessToken(user.id);
+    const refreshTokenVal = generateRefreshToken(user.id);
+    setTokenCookies(res, accessToken, refreshTokenVal);
+
+    // Redirect user to frontend with tokens in URL
+    return res.redirect(`${clientUrl}/auth/google/callback?accessToken=${accessToken}&refreshToken=${refreshTokenVal}&hasProfile=${!!profile}&name=${encodeURIComponent(user.name)}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { signup, login, logout, refreshToken, getMe, forgotPassword, resetPassword, verifyEmail, googleAuth, googleCallback };
+

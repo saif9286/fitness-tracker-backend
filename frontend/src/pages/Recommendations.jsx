@@ -19,7 +19,7 @@ export default function Recommendations() {
   const [lunchPicks, setLunchPicks] = useState([]);
   const [snackPicks, setSnackPicks] = useState([]);
   const [remaining, setRemaining] = useState({ protein: 150, calories: 2200 });
-  const [userProfile, setUserProfile] = useState({ goal: '', diet_type: '' });
+  const [userProfile, setUserProfile] = useState({ goal: '', diet_type: '', protein_goal: 150, calorie_goal: 2200 });
 
   // Log Modal States
   const [selectedFood, setSelectedFood] = useState(null);
@@ -27,21 +27,32 @@ export default function Recommendations() {
   const [quantity, setQuantity] = useState('1');
   const [mealType, setMealType] = useState('breakfast');
   const [logging, setLogging] = useState(false);
+  const [quickLoggingId, setQuickLoggingId] = useState(null);
 
   const fetchAllRecommendations = async () => {
     try {
       setLoading(true);
-      const [topRes, breakfastRes, lunchRes, snackRes] = await Promise.all([
+      const [topRes, breakfastRes, lunchRes, snackRes, profileRes] = await Promise.all([
         api.get('/recommendations'),
         api.get('/recommendations?meal_type=breakfast'),
         api.get('/recommendations?meal_type=lunch'),
         api.get('/recommendations?meal_type=snack'),
+        api.get('/profile'),
       ]);
+
+      let profileData = {};
+      if (profileRes.data.success && profileRes.data.data) {
+        profileData = profileRes.data.data;
+      }
 
       if (topRes.data.success) {
         setTopPicks(topRes.data.data.recommendations);
         setRemaining(topRes.data.data.remaining);
-        setUserProfile(topRes.data.data.profile);
+        setUserProfile({
+          ...topRes.data.data.profile,
+          protein_goal: profileData.protein_goal || 150,
+          calorie_goal: profileData.calorie_goal || 2200,
+        });
       }
       if (breakfastRes.data.success) {
         setBreakfastPicks(breakfastRes.data.data.recommendations);
@@ -97,6 +108,35 @@ export default function Recommendations() {
     }
   };
 
+  const handleQuickLog = async (food, defaultMealType) => {
+    setQuickLoggingId(food.id);
+    try {
+      const { data: res } = await api.post('/food-logs', {
+        food_id: food.id,
+        quantity: 1,
+        meal_type: defaultMealType,
+      });
+
+      if (res.success) {
+        toast.success(`Logged 1 serving of ${food.food_name}!`);
+        // Refresh remaining values
+        await fetchAllRecommendations();
+      }
+    } catch (err) {
+      toast.error('Failed to log food');
+    } finally {
+      setQuickLoggingId(null);
+    }
+  };
+
+  const getMealTypeByTime = () => {
+    const hr = new Date().getHours();
+    if (hr < 11) return 'breakfast';
+    if (hr < 16) return 'lunch';
+    if (hr < 20) return 'dinner';
+    return 'snack';
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -105,79 +145,97 @@ export default function Recommendations() {
     );
   }
 
-  const renderRow = (title, subtitle, foods) => {
+  const renderRow = (title, subtitle, foods, defaultMealType) => {
     const filteredFoods = foods ? foods.filter((f) => dietFilter === 'all' || f.diet_type === dietFilter) : [];
     if (filteredFoods.length === 0) return null;
 
     return (
-      <div style={{ marginBottom: 'var(--space-8)' }}>
+      <div className="recommendation-section" style={{ marginBottom: 'var(--space-8)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'var(--space-4)' }}>
           <div>
-            <h2 className="text-h2" style={{ fontWeight: 'var(--weight-semibold)' }}>{title}</h2>
+            <h2 className="text-h2" style={{ fontWeight: 'var(--weight-semibold)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Lightbulb size={20} style={{ color: 'var(--accent-primary)' }} />
+              {title}
+            </h2>
             <p className="text-small text-secondary" style={{ marginTop: '2px' }}>{subtitle}</p>
           </div>
         </div>
 
-        {/* Scrollable horizontal container */}
-        <div style={{
-          display: 'flex',
-          gap: 'var(--space-4)',
-          overflowX: 'auto',
-          paddingBottom: 'var(--space-2)',
-          scrollbarWidth: 'thin',
-          msOverflowStyle: 'none'
-        }} className="recommendation-row">
-          {filteredFoods.map((food) => (
-            <Card
-              key={food.id}
-              onClick={() => handleOpenLogModal(food)}
-              className="recommendation-card card-interactive"
-              style={{
-                width: '260px',
-                flexShrink: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: 'var(--space-5)',
-                background: 'var(--bg-elevated)',
-                cursor: 'pointer'
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
-                  <span className="text-label text-tertiary" style={{ fontSize: '10px' }}>{food.diet_type}</span>
-                  <span className="text-label text-tertiary" style={{ fontSize: '10px', color: 'var(--accent-cool)' }}>
-                    P: {Math.round((food.protein / food.calories) * 100)}% cal
-                  </span>
-                </div>
-                
-                <h4 style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--weight-semibold)', marginBottom: 'var(--space-2)', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '40px', lineHeight: '20px' }}>
-                  {food.food_name}
-                </h4>
-                
-                <div className="text-mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--accent-cool)', display: 'flex', alignItems: 'baseline', gap: '2px' }}>
-                  {food.protein} <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>g protein / {food.serving}</span>
-                </div>
-              </div>
+        {/* Scrollable horizontal container wrapper */}
+        <div className="recommendation-row-wrapper" style={{ position: 'relative' }}>
+          <div className="recommendation-row">
+            {filteredFoods.map((food) => {
+              const isLoggingThis = quickLoggingId === food.id;
+              
+              return (
+                <Card
+                  key={food.id}
+                  onClick={() => handleOpenLogModal(food)}
+                  className="recommendation-card card-interactive"
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+                        <span className="diet-badge" data-diet={food.diet_type}>{food.diet_type}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--accent-cool)', fontWeight: 'var(--weight-medium)', background: 'var(--accent-cool-bg)', padding: '2px 6px', borderRadius: '4px' }}>
+                          P: {Math.round((food.protein / food.calories) * 100)}% cal
+                        </span>
+                      </div>
+                      
+                      <h4 className="recommendation-food-name">
+                        {food.food_name}
+                      </h4>
+                      
+                      <div className="text-mono protein-value">
+                        {food.protein} <span className="protein-unit">g protein / {food.serving}</span>
+                      </div>
+                    </div>
 
-              <div style={{ marginTop: 'var(--space-4)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
-                  <span>Calories: {food.calories} kcal</span>
-                  <span>Carbs: {food.carbs}g</span>
-                </div>
-                <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenLogModal(food); }} style={{ width: '100%', display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
-                  <Plus size={14} /> Add to Log
-                </Button>
-              </div>
-            </Card>
-          ))}
+                    <div style={{ marginTop: 'var(--space-4)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
+                        <span>Calories: {food.calories} kcal</span>
+                        <span>Carbs: {food.carbs}g</span>
+                      </div>
+                      
+                      <div className="card-actions" style={{ display: 'flex', gap: '8px' }}>
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={(e) => { e.stopPropagation(); handleOpenLogModal(food); }} 
+                          style={{ flex: 1, padding: '8px' }}
+                          title="Customize and log"
+                        >
+                          Customize
+                        </Button>
+                        <Button 
+                          variant="accent" 
+                          size="sm" 
+                          disabled={isLoggingThis || quickLoggingId !== null}
+                          onClick={(e) => { e.stopPropagation(); handleQuickLog(food, defaultMealType); }} 
+                          style={{ flex: 1, padding: '8px', display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          {isLoggingThis ? (
+                            <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                          ) : (
+                            <>Quick Log</>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+          {/* Scroll fade overlay cue */}
+          <div className="scroll-fade-cue" />
         </div>
       </div>
     );
   };
 
   return (
-    <div>
+    <div className="page-fade-in">
       {/* Header */}
       <div className="page-header">
         <h1>Smart Recommendations</h1>
@@ -185,37 +243,83 @@ export default function Recommendations() {
       </div>
 
       {/* Target Budgets Bar */}
-      <Card style={{ display: 'flex', gap: 'var(--space-8)', padding: 'var(--space-5)', background: 'var(--bg-elevated)', marginBottom: 'var(--space-8)', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <div style={{ color: 'var(--accent-cool)', background: 'var(--accent-cool-bg)', padding: '10px', borderRadius: 'var(--radius-full)' }}>
+      <div className="recommendations-bento-grid" style={{ marginBottom: 'var(--space-8)' }}>
+        {/* Goal Mode Card */}
+        <Card className="bento-card" style={{ padding: 'var(--space-5)', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+          <div style={{ color: 'var(--accent-primary)', background: 'var(--accent-primary-bg)', padding: '12px', borderRadius: 'var(--radius-xl)' }}>
             <Sparkles size={24} />
           </div>
           <div>
             <div className="text-label text-tertiary">Goal Mode</div>
-            <div style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--weight-semibold)', textTransform: 'capitalize' }}>
-              {userProfile.goal ? userProfile.goal.replace('_', ' ') : 'athlete'} • {userProfile.diet_type}
+            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', textTransform: 'capitalize' }}>
+              {userProfile.goal ? userProfile.goal.replace('_', ' ') : 'athlete'}
+            </div>
+            <div className="text-small text-secondary">{userProfile.diet_type} Preference</div>
+          </div>
+        </Card>
+
+        {/* Protein Budget Card */}
+        <Card className="bento-card" style={{ padding: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+            <div>
+              <div className="text-label text-tertiary">Protein Target</div>
+              <div className="text-mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--accent-cool)' }}>
+                {remaining.protein}g <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 'normal' }}>remaining</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              Goal: {userProfile.protein_goal}g
             </div>
           </div>
-        </div>
-
-        <div style={{ borderLeft: '1px solid var(--border-primary)', display: 'block' }} />
-
-        <div>
-          <div className="text-label text-tertiary">Remaining Protein Target</div>
-          <div className="text-mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--accent-cool)' }}>
-            {remaining.protein}g <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 'normal' }}>needed today</span>
+          {/* Progress Bar */}
+          <div style={{ width: '100%', height: '6px', background: 'var(--border-primary)', borderRadius: 'var(--radius-full)', overflow: 'hidden', marginTop: '12px' }}>
+            <div
+              style={{
+                width: `${Math.max(0, Math.min(100, ((userProfile.protein_goal - remaining.protein) / userProfile.protein_goal) * 100))}%`,
+                height: '100%',
+                background: 'var(--accent-cool)',
+                boxShadow: '0 0 10px rgba(0, 212, 170, 0.4)',
+                transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}
+            />
           </div>
-        </div>
-
-        <div style={{ borderLeft: '1px solid var(--border-primary)', display: 'block' }} />
-
-        <div>
-          <div className="text-label text-tertiary">Remaining Calorie Budget</div>
-          <div className="text-mono" style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--accent-warm)' }}>
-            {remaining.calories} kcal <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 'normal' }}>remaining</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
+            <span>Logged: {Math.max(0, userProfile.protein_goal - remaining.protein)}g</span>
+            <span>{Math.round(Math.max(0, Math.min(100, ((userProfile.protein_goal - remaining.protein) / userProfile.protein_goal) * 100)))}%</span>
           </div>
-        </div>
-      </Card>
+        </Card>
+
+        {/* Calories Budget Card */}
+        <Card className="bento-card" style={{ padding: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
+            <div>
+              <div className="text-label text-tertiary">Calorie Budget</div>
+              <div className="text-mono" style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--weight-bold)', color: 'var(--accent-warm)' }}>
+                {remaining.calories} kcal <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontWeight: 'normal' }}>left</span>
+              </div>
+            </div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              Goal: {userProfile.calorie_goal} kcal
+            </div>
+          </div>
+          {/* Progress Bar */}
+          <div style={{ width: '100%', height: '6px', background: 'var(--border-primary)', borderRadius: 'var(--radius-full)', overflow: 'hidden', marginTop: '12px' }}>
+            <div
+              style={{
+                width: `${Math.max(0, Math.min(100, ((userProfile.calorie_goal - remaining.calories) / userProfile.calorie_goal) * 100))}%`,
+                height: '100%',
+                background: 'var(--accent-warm)',
+                boxShadow: '0 0 10px rgba(255, 107, 53, 0.4)',
+                transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>
+            <span>Logged: {Math.max(0, userProfile.calorie_goal - remaining.calories)} kcal</span>
+            <span>{Math.round(Math.max(0, Math.min(100, ((userProfile.calorie_goal - remaining.calories) / userProfile.calorie_goal) * 100)))}%</span>
+          </div>
+        </Card>
+      </div>
 
       {/* Diet Category Filter Chips */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-6)', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -230,7 +334,7 @@ export default function Recommendations() {
             key={chip.id}
             onClick={() => setDietFilter(chip.id)}
             className={`btn btn-sm ${dietFilter === chip.id ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)' }}
+            style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', transition: 'all 0.2s' }}
           >
             {chip.label}
           </button>
@@ -238,10 +342,10 @@ export default function Recommendations() {
       </div>
 
       {/* Categories */}
-      {renderRow("Smart Protein Picks", "Handpicked high-protein choices matching your remaining macro targets and dietary preferences.", topPicks)}
-      {renderRow("Breakfast Suggestions", "Morning options packed with clean protein to boost your daily stats early.", breakfastPicks)}
-      {renderRow("Lunch & Dinner Fuels", "Complete meal selections rich in protein to form the core of your nutrition plan.", lunchPicks)}
-      {renderRow("Smart Snacks & Shakes", "Quick protein boosters and snacks to help you meet targets between main meals.", snackPicks)}
+      {renderRow("Smart Protein Picks", "Handpicked high-protein choices matching your remaining macro targets and dietary preferences.", topPicks, getMealTypeByTime())}
+      {renderRow("Breakfast Suggestions", "Morning options packed with clean protein to boost your daily stats early.", breakfastPicks, "breakfast")}
+      {renderRow("Lunch & Dinner Fuels", "Complete meal selections rich in protein to form the core of your nutrition plan.", lunchPicks, getMealTypeByTime() === 'breakfast' || getMealTypeByTime() === 'snack' ? 'lunch' : getMealTypeByTime())}
+      {renderRow("Smart Snacks & Shakes", "Quick protein boosters and snacks to help you meet targets between main meals.", snackPicks, "snack")}
 
       {/* Log Food Modal */}
       <Modal
@@ -303,3 +407,4 @@ export default function Recommendations() {
     </div>
   );
 }
+

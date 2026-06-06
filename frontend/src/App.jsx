@@ -16,6 +16,7 @@ import Signup from './pages/auth/Signup';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import VerifyEmail from './pages/auth/VerifyEmail';
+import GoogleCallback from './pages/auth/GoogleCallback';
 
 // Protected Pages
 import Onboarding from './pages/Onboarding';
@@ -41,6 +42,8 @@ export default function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/auth/google/callback" element={<GoogleCallback />} />
+
 
               {/* Onboarding Wizard (requires auth but doesn't require profile) */}
               <Route
