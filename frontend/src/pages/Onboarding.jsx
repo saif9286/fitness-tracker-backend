@@ -176,7 +176,7 @@ export default function Onboarding() {
 
             <div className="form-group">
               <label className="form-label">Gender</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <div className="form-grid-two-columns">
                 <Card
                   interactive
                   onClick={() => setGender('male')}
@@ -289,7 +289,7 @@ export default function Onboarding() {
               <p className="text-secondary">This helps us curate custom high-protein meal recommendations for you.</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <div className="form-grid-two-columns">
               {[
                 { id: 'vegetarian', label: 'Vegetarian', desc: 'No meat, includes dairy' },
                 { id: 'non-vegetarian', label: 'Non-Vegetarian', desc: 'Chicken, fish, meat, eggs' },
@@ -384,7 +384,7 @@ export default function Onboarding() {
               <p className="text-secondary">Here are the calculated nutrition guidelines optimized for your goal.</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
+            <div className="form-grid-two-columns" style={{ marginBottom: 'var(--space-6)' }}>
               <Card style={{ textAlign: 'center', background: 'var(--bg-surface)' }}>
                 <div className="text-label text-tertiary">Daily Protein</div>
                 <div className="text-stat-lg text-accent" style={{ margin: 'var(--space-2) 0' }}>

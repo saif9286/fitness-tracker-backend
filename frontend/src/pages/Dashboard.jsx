@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [trendData, setTrendData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isWaterAnimating, setIsWaterAnimating] = useState(false);
 
   // Modals / forms state
   const [weightModalOpen, setWeightModalOpen] = useState(false);
@@ -82,6 +83,8 @@ export default function Dashboard() {
       const { data: res } = await api.post('/water', { amount });
       if (res.success) {
         toast.success(`Logged +${amount}ml Water`);
+        setIsWaterAnimating(true);
+        setTimeout(() => setIsWaterAnimating(false), 600);
         // update local state
         setData((prev) => {
           const newTotal = prev.water.totalMl + amount;
@@ -208,7 +211,7 @@ export default function Dashboard() {
   return (
     <div>
       {/* Welcome header */}
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
         <div>
           <h1>Welcome, {user?.name || 'Athlete'}</h1>
           <p>Here is your daily fitness scoreboard.</p>
@@ -221,14 +224,10 @@ export default function Dashboard() {
       </div>
 
       {/* Bento Grid Layout */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(12, 1fr)',
-        gap: 'var(--space-4)',
-      }}>
+      <div className="dashboard-grid">
         
         {/* Card 1: Protein Ring Target (Large Bento block, grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 'var(--space-6)' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 'var(--space-6)' }}>
           <div className="card-title text-label" style={{ marginBottom: 'var(--space-4)' }}>Protein Intake</div>
           <ProgressRing
             value={data.nutrition.protein}
@@ -254,7 +253,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 2: Calorie Target Progress (grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-4)' }}>
               <div>
@@ -294,7 +293,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 3: Water Tracker (grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-2)' }}>
               <div>
@@ -310,15 +309,18 @@ export default function Dashboard() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: 'var(--space-3) 0' }}>
               {/* Bottle Fill Animation Graphic */}
-              <div style={{
-                position: 'relative',
-                width: '36px',
-                height: '70px',
-                border: '2px solid var(--border-primary)',
-                borderRadius: '8px 8px 12px 12px',
-                overflow: 'hidden',
-                background: 'var(--bg-surface)'
-              }}>
+              <div
+                className={isWaterAnimating ? 'water-bottle-bounce' : ''}
+                style={{
+                  position: 'relative',
+                  width: '36px',
+                  height: '70px',
+                  border: '2px solid var(--border-primary)',
+                  borderRadius: '8px 8px 12px 12px',
+                  overflow: 'hidden',
+                  background: 'var(--bg-surface)'
+                }}
+              >
                 <div style={{
                   position: 'absolute',
                   bottom: 0,
@@ -355,7 +357,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 4: Streaks (grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
           <div style={{ color: 'var(--accent-warm)', background: 'var(--accent-warm-bg)', padding: '14px', borderRadius: 'var(--radius-full)', display: 'inline-flex' }}>
             <Flame size={32} />
           </div>
@@ -371,7 +373,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 5: Weight Log Card (grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
           <div style={{ color: 'var(--accent-blue)', background: 'var(--accent-blue-bg)', padding: '14px', borderRadius: 'var(--radius-full)', display: 'inline-flex' }}>
             <Scale size={32} />
           </div>
@@ -387,7 +389,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 6: Workouts (grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
           <div style={{ color: 'var(--accent-purple)', background: 'var(--accent-purple-bg)', padding: '14px', borderRadius: 'var(--radius-full)', display: 'inline-flex' }}>
             <Dumbbell size={32} />
           </div>
@@ -403,7 +405,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 7: Protein Trend Chart (grid span 8) */}
-        <Card style={{ gridColumn: 'span 8', minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <Card className="col-span-8-desktop" style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
             <div className="card-title text-label">Protein Trend (Last 7 Days)</div>
             <div className="text-small text-secondary">Aim to exceed the {data.targets.protein}g bar</div>
@@ -414,7 +416,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Card 8: Recent Food Log (grid span 4) */}
-        <Card style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <Card className="col-span-4-desktop" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div className="card-title text-label" style={{ marginBottom: 'var(--space-4)' }}>Recent Logs</div>
             

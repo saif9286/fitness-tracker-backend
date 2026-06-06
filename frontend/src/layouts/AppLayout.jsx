@@ -125,6 +125,30 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="mobile-bottom-nav">
+        <NavLink to="/" end className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <LayoutDashboard size={20} />
+          <span>Dashboard</span>
+        </NavLink>
+        <NavLink to="/tracker" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <UtensilsCrossed size={20} />
+          <span>Food Log</span>
+        </NavLink>
+        <NavLink to="/workouts" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <Dumbbell size={20} />
+          <span>Workouts</span>
+        </NavLink>
+        <NavLink to="/progress" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <Camera size={20} />
+          <span>Photos</span>
+        </NavLink>
+        <NavLink to="/profile" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <User size={20} />
+          <span>Profile</span>
+        </NavLink>
+      </nav>
     </div>
   );
 }

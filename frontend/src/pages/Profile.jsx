@@ -183,7 +183,7 @@ export default function Profile() {
             <User size={20} /> Personal Parameters
           </h2>
           
-          <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+          <form onSubmit={handleSave} className="form-grid-two-columns" style={{ gap: 'var(--space-6)' }}>
             <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-4)' }}>
               <Input
                 label="Age (years)"

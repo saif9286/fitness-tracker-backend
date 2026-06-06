@@ -353,7 +353,7 @@ export default function FoodTracker() {
 
       {/* Global Food Search Container */}
       <div style={{ position: 'relative', marginBottom: 'var(--space-6)' }} ref={searchContainerRef}>
-        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <div className="search-btn-container" style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
             <input
@@ -480,17 +480,19 @@ export default function FoodTracker() {
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: 'var(--space-3)',
                             padding: '12px 0',
                             borderBottom: '1px solid var(--border-light)'
                           }}
                         >
-                          <div>
+                          <div style={{ flex: 1, minWidth: '160px' }}>
                             <div style={{ fontWeight: 'var(--weight-medium)', fontSize: 'var(--text-sm)' }}>{log.food.food_name}</div>
                             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
                               Quantity: {log.quantity}x ({log.food.serving})
                             </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexShrink: 0 }}>
                             <div style={{ textAlign: 'right' }}>
                               <div className="text-mono text-accent" style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-sm)' }}>+{Math.round(log.food.protein * log.quantity)}g</div>
                               <div className="text-mono" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{Math.round(log.food.calories * log.quantity)} kcal</div>
@@ -629,7 +631,7 @@ export default function FoodTracker() {
         onClose={() => setCustomFoodModalOpen(false)}
         title="Create Custom Food Item"
       >
-        <form onSubmit={handleCreateCustomFood} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+        <form onSubmit={handleCreateCustomFood} className="form-grid-two-columns" style={{ gap: 'var(--space-4)' }}>
           <div style={{ gridColumn: 'span 2' }}>
             <Input
               label="Food Name"

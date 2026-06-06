@@ -146,7 +146,7 @@ export default function ProgressPhotos() {
             Select a "Before" and "After" photo from the gallery cards below to inspect side-by-side modifications.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+          <div className="form-grid-two-columns" style={{ gap: 'var(--space-6)' }}>
             {/* Before block */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', minHeight: '300px', background: 'var(--bg-surface)' }}>
               {beforePhoto ? (

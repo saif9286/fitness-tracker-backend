@@ -1674,3 +1674,213 @@ img {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-hover);
 }
+
+/* =========================================
+   RESPONSIVE LAYOUT UTILITY CLASSES
+   ========================================= */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-4);
+}
+
+.col-span-4-desktop {
+  grid-column: span 4;
+}
+
+.col-span-8-desktop {
+  grid-column: span 8;
+}
+
+@media (max-width: 1024px) {
+  .col-span-4-desktop {
+    grid-column: span 6;
+  }
+  .col-span-8-desktop {
+    grid-column: span 12;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .col-span-4-desktop, .col-span-8-desktop {
+    grid-column: span 12;
+  }
+}
+
+.split-grid-12-5 {
+  display: grid;
+  grid-template-columns: 12fr 5fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.split-grid-12-4 {
+  display: grid;
+  grid-template-columns: 12fr 4fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .split-grid-12-5, .split-grid-12-4 {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+.workout-split-grid {
+  display: grid;
+  grid-template-columns: 5fr 7fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .workout-split-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+.form-grid-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 600px) {
+  .form-grid-two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   MOBILE BOTTOM NAVIGATION BAR
+   ========================================= */
+
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--border-primary);
+  z-index: var(--z-topbar);
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 var(--space-2);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='light'] .mobile-bottom-nav {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+  
+  body {
+    padding-bottom: 80px; /* Safe padding for bottom navigation bar */
+  }
+
+  .app-topbar {
+    padding: 0 var(--space-4);
+  }
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  width: 56px;
+  height: 100%;
+  transition: all var(--transition-fast);
+  gap: 2px;
+}
+
+.bottom-nav-item svg {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--transition-spring), color var(--transition-fast);
+}
+
+.bottom-nav-item.active {
+  color: var(--text-primary);
+}
+
+.bottom-nav-item.active svg {
+  color: var(--accent-cool);
+  transform: translateY(-2px);
+  filter: drop-shadow(0 0 6px rgba(0, 212, 170, 0.6));
+}
+
+/* =========================================
+   INTERACTIVE MOBILE TACTILE FEEDBACK
+   ========================================= */
+
+@media (max-width: 768px) {
+  .btn:active:not(:disabled) {
+    transform: scale(0.96) !important;
+  }
+  
+  .card:active {
+    transform: scale(0.99);
+    border-color: var(--border-hover);
+  }
+  
+  .onboarding-option:active {
+    transform: scale(0.98);
+  }
+  
+  .nav-item:active {
+    background-color: var(--bg-hover) !important;
+  }
+}
+
+/* =========================================
+   MICRO-ANIMATIONS & POP TRANSITIONS
+   ========================================= */
+
+@keyframes bottle-bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.85, 1.2) translateY(-6px); }
+  50% { transform: scale(1.1, 0.9) translateY(2px); }
+  70% { transform: scale(0.95, 1.05) translateY(-1px); }
+  100% { transform: scale(1); }
+}
+
+.water-bottle-bounce {
+  animation: bottle-bounce 0.6s cubic-bezier(0.25, 0.8, 0.25, 1.2);
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-content {
+  animation: page-fade-in 0.35s var(--transition-spring);
+}
+

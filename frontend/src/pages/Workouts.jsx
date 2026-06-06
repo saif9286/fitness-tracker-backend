@@ -176,7 +176,7 @@ export default function WorkoutTracker() {
       </div>
 
       {/* Main split */}
-      <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+      <div className="workout-split-grid">
         
         {/* Form Card */}
         <Card style={{ position: 'relative' }}>
@@ -227,7 +227,7 @@ export default function WorkoutTracker() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <div className="form-grid-two-columns">
               <Input
                 label="Sets"
                 type="number"
@@ -246,7 +246,7 @@ export default function WorkoutTracker() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+            <div className="form-grid-two-columns">
               <Input
                 label="Weight (kg - optional)"
                 type="number"

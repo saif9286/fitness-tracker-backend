@@ -257,7 +257,7 @@ export default function WeightTracker() {
       </div>
 
       {/* Main split */}
-      <div style={{ display: 'grid', gridTemplateColumns: '12fr 5fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+      <div className="split-grid-12-5">
         
         {/* Weight history Chart */}
         <Card style={{ minHeight: '340px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
