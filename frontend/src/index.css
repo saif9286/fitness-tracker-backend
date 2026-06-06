@@ -1884,3 +1884,23 @@ img {
   animation: page-fade-in 0.35s var(--transition-spring);
 }
 
+.topbar-logo {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .topbar-logo {
+    display: block;
+  }
+  
+  .topbar-logo h2 {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    letter-spacing: -0.02em;
+  }
+
+  .topbar-logo span {
+    color: var(--accent-cool);
+  }
+}
+
