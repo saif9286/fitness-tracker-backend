@@ -442,9 +442,10 @@ const googleAuth = async (req, res, next) => {
       });
       payload = ticket.getPayload();
     } catch (err) {
+      console.error('Google token verification failed:', err.message);
       return res.status(401).json({
         success: false,
-        message: 'Invalid Google token',
+        message: 'Invalid Google token: ' + err.message,
       });
     }
 
