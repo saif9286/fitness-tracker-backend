@@ -10,6 +10,7 @@ import { Flame, Lightbulb, Plus, Sparkles, ChevronRight, Apple, Heart } from 'lu
 
 export default function Recommendations() {
   const toast = useToast();
+  const [dietFilter, setDietFilter] = useState('all');
   
   // Data States
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,8 @@ export default function Recommendations() {
   }
 
   const renderRow = (title, subtitle, foods) => {
-    if (!foods || foods.length === 0) return null;
+    const filteredFoods = foods ? foods.filter((f) => dietFilter === 'all' || f.diet_type === dietFilter) : [];
+    if (filteredFoods.length === 0) return null;
 
     return (
       <div style={{ marginBottom: 'var(--space-8)' }}>
@@ -125,9 +127,11 @@ export default function Recommendations() {
           scrollbarWidth: 'thin',
           msOverflowStyle: 'none'
         }} className="recommendation-row">
-          {foods.map((food) => (
+          {filteredFoods.map((food) => (
             <Card
               key={food.id}
+              onClick={() => handleOpenLogModal(food)}
+              className="recommendation-card card-interactive"
               style={{
                 width: '260px',
                 flexShrink: 0,
@@ -135,7 +139,8 @@ export default function Recommendations() {
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 padding: 'var(--space-5)',
-                background: 'var(--bg-elevated)'
+                background: 'var(--bg-elevated)',
+                cursor: 'pointer'
               }}
             >
               <div>
@@ -160,7 +165,7 @@ export default function Recommendations() {
                   <span>Calories: {food.calories} kcal</span>
                   <span>Carbs: {food.carbs}g</span>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => handleOpenLogModal(food)} style={{ width: '100%', display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); handleOpenLogModal(food); }} style={{ width: '100%', display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
                   <Plus size={14} /> Add to Log
                 </Button>
               </div>
@@ -211,6 +216,26 @@ export default function Recommendations() {
           </div>
         </div>
       </Card>
+
+      {/* Diet Category Filter Chips */}
+      <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-6)', overflowX: 'auto', paddingBottom: '4px' }}>
+        {[
+          { id: 'all', label: 'All Diets' },
+          { id: 'vegetarian', label: 'Vegetarian Only' },
+          { id: 'vegan', label: 'Vegan Only' },
+          { id: 'non-vegetarian', label: 'Non-Vegetarian Only' },
+          { id: 'eggetarian', label: 'Eggetarian Only' },
+        ].map((chip) => (
+          <button
+            key={chip.id}
+            onClick={() => setDietFilter(chip.id)}
+            className={`btn btn-sm ${dietFilter === chip.id ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)' }}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
 
       {/* Categories */}
       {renderRow("Smart Protein Picks", "Handpicked high-protein choices matching your remaining macro targets and dietary preferences.", topPicks)}

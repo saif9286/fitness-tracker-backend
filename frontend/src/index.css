@@ -1904,3 +1904,25 @@ img {
   }
 }
 
+/* =========================================
+   RECOMMENDATIONS CARD INTERACTION
+   ========================================= */
+
+.recommendation-card {
+  transition: transform 0.25s var(--transition-spring), border-color 0.2s, box-shadow 0.2s;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: var(--accent-cool) !important;
+  box-shadow: 0 8px 30px rgba(0, 212, 170, 0.12) !important;
+}
+
+@media (max-width: 768px) {
+  .recommendation-card:active {
+    transform: scale(0.97) !important;
+    border-color: var(--accent-cool) !important;
+    background-color: var(--bg-hover) !important;
+  }
+}
+

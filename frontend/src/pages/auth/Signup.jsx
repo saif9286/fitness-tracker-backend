@@ -63,6 +63,7 @@ export default function Signup() {
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleGoogleResponse,
+      itp_support: true,
     });
 
     const btnContainer = document.getElementById('google-signup-btn');
