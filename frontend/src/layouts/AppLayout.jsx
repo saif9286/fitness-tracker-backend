@@ -140,9 +140,9 @@ export default function AppLayout() {
           <Dumbbell size={20} />
           <span>Workouts</span>
         </NavLink>
-        <NavLink to="/progress" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-          <Camera size={20} />
-          <span>Photos</span>
+        <NavLink to="/meal-plan" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
+          <CalendarDays size={20} />
+          <span>Meal Plan</span>
         </NavLink>
         <NavLink to="/profile" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
           <User size={20} />
