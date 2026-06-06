@@ -16,12 +16,16 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: CLIENT_URL
-        value: https://fitness-tracker-frontend.onrender.com
+        value: https://fitness-tracker-frontend-s34c.onrender.com
   - type: web
     name: fitness-tracker-frontend
     env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://fitness-tracker-backend.onrender.com/api
+        value: https://fitness-tracker-backend-yxpg.onrender.com/api
