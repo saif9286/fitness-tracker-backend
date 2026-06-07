@@ -6,7 +6,7 @@ import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Spinner from '../components/ui/Spinner';
 import api from '../services/api';
-import { Camera, Trash2, Plus, Calendar, Image as ImageIcon, Sliders, Upload, RefreshCw, ZapOff } from 'lucide-react';
+import { Camera, Trash2, Plus, Calendar, Image as ImageIcon, Sliders, Upload, RefreshCw, ZapOff, FlipHorizontal } from 'lucide-react';
 
 export default function ProgressPhotos() {
   const toast = useToast();
@@ -34,9 +34,11 @@ export default function ProgressPhotos() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [capturedPreview, setCapturedPreview] = useState(null); // base64 data URL
+  const [facingMode, setFacingMode] = useState('user'); // 'user' = front, 'environment' = back
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const facingModeRef = useRef('user'); // keep in sync for callbacks
 
   const fetchPhotos = async () => {
     try {
@@ -57,12 +59,22 @@ export default function ProgressPhotos() {
   }, []);
 
   // --- Camera helpers ---
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (mode) => {
+    const facing = mode ?? facingModeRef.current;
     setCameraError(null);
     setCapturedPreview(null);
+    // Stop any existing stream first
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
         audio: false,
       });
       streamRef.current = stream;
@@ -91,9 +103,17 @@ export default function ProgressPhotos() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    // For front camera: un-mirror the image so saved photo is NOT flipped
+    if (facingModeRef.current === 'user') {
+      ctx.translate(w, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     setCapturedPreview(dataUrl);
     stopCamera();
@@ -107,13 +127,23 @@ export default function ProgressPhotos() {
   const handleRetake = useCallback(() => {
     setCapturedPreview(null);
     setSelectedFile(null);
-    startCamera();
+    startCamera(facingModeRef.current);
   }, [startCamera]);
+
+  const handleFlipCamera = useCallback(() => {
+    const next = facingModeRef.current === 'user' ? 'environment' : 'user';
+    facingModeRef.current = next;
+    setFacingMode(next);
+    startCamera(next);
+  }, [startCamera]);
+
+  // Sync facingModeRef whenever facingMode state changes
+  useEffect(() => { facingModeRef.current = facingMode; }, [facingMode]);
 
   // Start / stop camera when tab changes or modal closes
   useEffect(() => {
     if (uploadModalOpen && uploadTab === 'camera') {
-      startCamera();
+      startCamera(facingModeRef.current);
     } else {
       stopCamera();
       if (!uploadModalOpen) setCapturedPreview(null);
@@ -524,13 +554,28 @@ export default function ProgressPhotos() {
                 </div>
               ) : (
                 /* Live camera feed */
-                <div style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
+                <div style={{
+                  position: 'relative',
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                  background: '#000',
+                  width: '100%',
+                  aspectRatio: '9/16',  /* portrait phone ratio */
+                  maxHeight: '70vh',
+                }}>
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     muted
-                    style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', display: 'block' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                      /* Mirror preview for front camera only */
+                      transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+                    }}
                   />
                   {!cameraActive && (
                     <div style={{
@@ -541,32 +586,81 @@ export default function ProgressPhotos() {
                     </div>
                   )}
                   {cameraActive && (
-                    <button
-                      type="button"
-                      onClick={capturePhoto}
-                      title="Capture Photo"
-                      style={{
+                    <>
+                      {/* Flip camera button */}
+                      <button
+                        type="button"
+                        onClick={handleFlipCamera}
+                        title="Switch Camera"
+                        style={{
+                          position: 'absolute',
+                          top: '14px',
+                          right: '14px',
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.55)',
+                          backdropFilter: 'blur(6px)',
+                          border: '1.5px solid rgba(255,255,255,0.25)',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,122,255,0.7)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.55)'}
+                      >
+                        <FlipHorizontal size={20} />
+                      </button>
+
+                      {/* Camera label badge */}
+                      <div style={{
                         position: 'absolute',
-                        bottom: '14px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '50%',
-                        background: '#fff',
-                        border: '4px solid rgba(255,255,255,0.4)',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'transform 0.1s ease',
-                      }}
-                      onMouseDown={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(0.93)'}
-                      onMouseUp={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}
-                    >
-                      <Camera size={22} style={{ color: '#111' }} />
-                    </button>
+                        top: '14px',
+                        left: '14px',
+                        background: 'rgba(0,0,0,0.55)',
+                        backdropFilter: 'blur(6px)',
+                        color: '#fff',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        padding: '4px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}>
+                        {facingMode === 'user' ? '🤳 Front' : '📷 Rear'}
+                      </div>
+
+                      {/* Capture shutter button */}
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        title="Capture Photo"
+                        style={{
+                          position: 'absolute',
+                          bottom: '20px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '64px',
+                          height: '64px',
+                          borderRadius: '50%',
+                          background: '#fff',
+                          border: '5px solid rgba(255,255,255,0.35)',
+                          boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'transform 0.1s ease',
+                        }}
+                        onMouseDown={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(0.91)'}
+                        onMouseUp={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}
+                      >
+                        <Camera size={26} style={{ color: '#111' }} />
+                      </button>
+                    </>
                   )}
                 </div>
               )}
