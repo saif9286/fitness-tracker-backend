@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -6,7 +6,7 @@ import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
 import Spinner from '../components/ui/Spinner';
 import api from '../services/api';
-import { Camera, Trash2, Plus, Calendar, Eye, Image as ImageIcon, Sliders } from 'lucide-react';
+import { Camera, Trash2, Plus, Calendar, Image as ImageIcon, Sliders, Upload, RefreshCw, ZapOff } from 'lucide-react';
 
 export default function ProgressPhotos() {
   const toast = useToast();
@@ -29,6 +29,15 @@ export default function ProgressPhotos() {
   const [photoDate, setPhotoDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [uploading, setUploading] = useState(false);
 
+  // Camera states
+  const [uploadTab, setUploadTab] = useState('file'); // 'file' | 'camera'
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [capturedPreview, setCapturedPreview] = useState(null); // base64 data URL
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
   const fetchPhotos = async () => {
     try {
       setLoading(true);
@@ -46,6 +55,81 @@ export default function ProgressPhotos() {
   useEffect(() => {
     fetchPhotos();
   }, []);
+
+  // --- Camera helpers ---
+  const startCamera = useCallback(async () => {
+    setCameraError(null);
+    setCapturedPreview(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraActive(true);
+    } catch (err) {
+      setCameraError(
+        err.name === 'NotAllowedError'
+          ? 'Camera access was denied. Please allow camera permissions in your browser.'
+          : 'Could not access camera. Make sure a webcam is connected.'
+      );
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    setCapturedPreview(dataUrl);
+    stopCamera();
+    // Convert data URL to File
+    canvas.toBlob((blob) => {
+      const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setSelectedFile(file);
+    }, 'image/jpeg', 0.92);
+  }, [stopCamera]);
+
+  const handleRetake = useCallback(() => {
+    setCapturedPreview(null);
+    setSelectedFile(null);
+    startCamera();
+  }, [startCamera]);
+
+  // Start / stop camera when tab changes or modal closes
+  useEffect(() => {
+    if (uploadModalOpen && uploadTab === 'camera') {
+      startCamera();
+    } else {
+      stopCamera();
+      if (!uploadModalOpen) setCapturedPreview(null);
+    }
+    return () => stopCamera();
+  }, [uploadModalOpen, uploadTab, startCamera, stopCamera]);
+
+  const handleModalClose = () => {
+    stopCamera();
+    setCapturedPreview(null);
+    setSelectedFile(null);
+    setNotes('');
+    setAngle('front');
+    setUploadTab('file');
+    setUploadModalOpen(false);
+  };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -75,6 +159,9 @@ export default function ProgressPhotos() {
 
       if (res.success) {
         toast.success('Progress photo logged successfully');
+        stopCamera();
+        setCapturedPreview(null);
+        setUploadTab('file');
         setUploadModalOpen(false);
         setSelectedFile(null);
         setNotes('');
@@ -309,27 +396,182 @@ export default function ProgressPhotos() {
       {/* Upload Photo Modal */}
       <Modal
         isOpen={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        title="Upload Progress Snapshot"
+        onClose={handleModalClose}
+        title="Log Progress Snapshot"
       >
-        <form onSubmit={handleUpload}>
-          <div className="form-group">
-            <label className="form-label">Image File</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              required
+        {/* Hidden canvas for camera capture */}
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+        {/* Tab switcher */}
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          background: 'var(--bg-surface)',
+          borderRadius: 'var(--radius-md)',
+          padding: '4px',
+          marginBottom: 'var(--space-5)',
+          border: '1px solid var(--border-primary)',
+        }}>
+          {[{ id: 'file', icon: <Upload size={14} />, label: 'Upload File' }, { id: 'camera', icon: <Camera size={14} />, label: 'Take Photo' }].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => { setUploadTab(tab.id); setSelectedFile(null); setCapturedPreview(null); }}
               style={{
-                width: '100%',
-                padding: '12px',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-primary)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 'var(--weight-medium)',
+                fontSize: 'var(--text-sm)',
+                transition: 'all 0.2s ease',
+                background: uploadTab === tab.id ? 'var(--accent-blue)' : 'transparent',
+                color: uploadTab === tab.id ? '#fff' : 'var(--text-secondary)',
+                boxShadow: uploadTab === tab.id ? '0 2px 8px rgba(0,122,255,0.35)' : 'none',
               }}
-            />
-          </div>
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleUpload}>
+          {/* ---- FILE UPLOAD TAB ---- */}
+          {uploadTab === 'file' && (
+            <div className="form-group">
+              <label className="form-label">Image File</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+              {selectedFile && (
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                  Selected: {selectedFile.name}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ---- CAMERA TAB ---- */}
+          {uploadTab === 'camera' && (
+            <div className="form-group">
+              <label className="form-label">Camera Preview</label>
+
+              {cameraError ? (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: 'var(--space-6)',
+                  border: '1px dashed var(--accent-red)',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(255,71,87,0.06)',
+                  color: 'var(--text-secondary)',
+                  textAlign: 'center',
+                }}>
+                  <ZapOff size={32} style={{ color: 'var(--accent-red)', opacity: 0.7 }} />
+                  <p style={{ fontSize: 'var(--text-sm)' }}>{cameraError}</p>
+                  <Button variant="secondary" size="sm" type="button" onClick={startCamera}>
+                    <RefreshCw size={14} /> Retry
+                  </Button>
+                </div>
+              ) : capturedPreview ? (
+                /* Captured preview */
+                <div style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                  <img
+                    src={capturedPreview}
+                    alt="Captured"
+                    style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', display: 'block' }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '10px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                  }}>
+                    <Button variant="secondary" size="sm" type="button" onClick={handleRetake}
+                      style={{ backdropFilter: 'blur(6px)', background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none' }}>
+                      <RefreshCw size={14} /> Retake
+                    </Button>
+                  </div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    left: '10px',
+                    background: 'rgba(52,199,89,0.85)',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    letterSpacing: '0.04em',
+                  }}>✓ Photo Captured</div>
+                </div>
+              ) : (
+                /* Live camera feed */
+                <div style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{ width: '100%', maxHeight: '280px', objectFit: 'cover', display: 'block' }}
+                  />
+                  {!cameraActive && (
+                    <div style={{
+                      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(0,0,0,0.6)',
+                    }}>
+                      <Spinner size="lg" />
+                    </div>
+                  )}
+                  {cameraActive && (
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      title="Capture Photo"
+                      style={{
+                        position: 'absolute',
+                        bottom: '14px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: '#fff',
+                        border: '4px solid rgba(255,255,255,0.4)',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'transform 0.1s ease',
+                      }}
+                      onMouseDown={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(0.93)'}
+                      onMouseUp={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}
+                    >
+                      <Camera size={22} style={{ color: '#111' }} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="form-group">
             <label className="form-label">Pose / Angle</label>
@@ -365,8 +607,10 @@ export default function ProgressPhotos() {
           </div>
 
           <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end', marginTop: 'var(--space-6)' }}>
-            <Button variant="secondary" onClick={() => setUploadModalOpen(false)} disabled={uploading}>Cancel</Button>
-            <Button variant="accent" type="submit" loading={uploading}>Log Photo</Button>
+            <Button variant="secondary" onClick={handleModalClose} disabled={uploading} type="button">Cancel</Button>
+            <Button variant="accent" type="submit" loading={uploading}
+              disabled={!selectedFile && !(capturedPreview)}
+            >Log Photo</Button>
           </div>
         </form>
       </Modal>
